@@ -1,5 +1,7 @@
 package com.example.reddit.service;
 
+import com.example.reddit.dto.AuthResponse;
+import com.example.reddit.dto.LoginRequest;
 import com.example.reddit.dto.RegisterRequest;
 import com.example.reddit.exceptions.SpringRedditException;
 import com.example.reddit.model.NotificationEmail;
@@ -9,6 +11,8 @@ import com.example.reddit.repository.UserRepository;
 import com.example.reddit.repository.VerificationTokenRepository;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -24,6 +28,8 @@ public class AuthService {
     private final UserRepository userRepository;
     private final VerificationTokenRepository verificationTokenRepository;
     private final MailService mailService;
+    private final AuthenticationManager authenticationManager;
+    private final JwtService jwtService;
 
     @Transactional
     public void signup(RegisterRequest registerRequest) {
@@ -69,5 +75,12 @@ public class AuthService {
         User user = userRepository.findByUsername(username).orElseThrow(() -> new SpringRedditException("User not found with name - " + username));
         user.setEnabled(true);
         userRepository.save(user);
+    }
+
+    public AuthResponse login(LoginRequest loginRequest) {
+        authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword()));
+
+        var user = userRepository.findByUsername(loginRequest.getUsername()).orElseThrow();
+        return new AuthResponse(jwtService.generateToken(user), loginRequest.getUsername());
     }
 }
